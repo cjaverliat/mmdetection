@@ -134,7 +134,7 @@ class RefImageCaptionInferencer(ImageCaptionInferencer):
         if load_img_idx == -1:
             raise ValueError(
                 'LoadImageFromFile is not found in the test pipeline')
-        pipeline_cfg[load_img_idx]['type'] = 'mmdet.InferencerLoader'
+        pipeline_cfg[load_img_idx]['type'] = 'mmcv.LoadImage'
 
         caption_pipeline = Compose(pipeline_cfg)
 
