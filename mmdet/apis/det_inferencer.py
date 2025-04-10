@@ -3,6 +3,7 @@ import copy
 import os.path as osp
 import warnings
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
+import torch
 
 import mmcv
 import mmengine
@@ -479,6 +480,10 @@ class DetInferencer(BaseInferencer):
                 img_name = osp.basename(single_input)
             elif isinstance(single_input, np.ndarray):
                 img = single_input.copy()
+                img_num = str(self.num_visualized_imgs).zfill(8)
+                img_name = f'{img_num}.jpg'
+            elif isinstance(single_input, torch.Tensor):
+                img = single_input.clone().detach().cpu().numpy()
                 img_num = str(self.num_visualized_imgs).zfill(8)
                 img_name = f'{img_num}.jpg'
             else:
