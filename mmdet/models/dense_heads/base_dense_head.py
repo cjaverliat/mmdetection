@@ -11,6 +11,8 @@ from mmengine.model import BaseModule, constant_init
 from mmengine.structures import InstanceData
 from torch import Tensor
 
+from torchvision.ops import batched_nms as batched_nms_pt
+
 from mmdet.structures import SampleList
 from mmdet.structures.bbox import (cat_boxes, get_box_tensor, get_box_wh,
                                    scale_boxes)
@@ -482,8 +484,13 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
         # TODO: deal with `with_nms` and `nms_cfg=None` in test_cfg
         if with_nms and results.bboxes.numel() > 0:
             bboxes = get_box_tensor(results.bboxes)
-            det_bboxes, keep_idxs = batched_nms(bboxes, results.scores,
-                                                results.labels, cfg.nms)
+
+            keep_idxs = batched_nms_pt(bboxes, results.scores, results.labels, float(cfg.nms.get("iou_threshold", 0.65)))
+            det_bboxes = bboxes[keep_idxs]
+            det_bboxes = torch.cat([det_bboxes, results.scores[keep_idxs][:, None]], -1)
+
+            # det_bboxes, keep_idxs = batched_nms(bboxes, results.scores,
+            #                                     results.labels, cfg.nms)
             results = results[keep_idxs]
             # some nms would reweight the score, such as softnms
             results.scores = det_bboxes[:, -1]
