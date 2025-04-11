@@ -476,14 +476,16 @@ class DetInferencer(BaseInferencer):
             if isinstance(single_input, str):
                 img_bytes = mmengine.fileio.get(single_input)
                 img = mmcv.imfrombytes(img_bytes)
-                img = img[:, :, ::-1]
+                img = mmcv.bgr2rgb(img)
                 img_name = osp.basename(single_input)
             elif isinstance(single_input, np.ndarray):
                 img = single_input.copy()
+                img = mmcv.bgr2rgb(img)
                 img_num = str(self.num_visualized_imgs).zfill(8)
                 img_name = f'{img_num}.jpg'
             elif isinstance(single_input, torch.Tensor):
                 img = single_input.clone().detach().cpu().numpy()
+                img = mmcv.bgr2rgb(img)
                 img_num = str(self.num_visualized_imgs).zfill(8)
                 img_name = f'{img_num}.jpg'
             else:
