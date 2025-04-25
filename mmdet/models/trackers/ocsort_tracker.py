@@ -91,6 +91,8 @@ class OCSORTTracker(SORTTracker):
         # parameters to save: mean, covariance, measurement
         self.tracks[id].tracked = True
         self.tracks[id].saved_attr = Dict()
+        self.tracks[id].saved_attr.mean = self.tracks[id].mean
+        self.tracks[id].saved_attr.covariance = self.tracks[id].covariance
         self.tracks[id].velocity = torch.tensor(
             (-1, -1)).to(obj[bbox_id].device)  # placeholder
 
