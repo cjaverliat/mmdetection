@@ -363,9 +363,14 @@ class DetInferencer(BaseInferencer):
             postprocess_kwargs,
         ) = self._dispatch_kwargs(**kwargs)
 
-        if isinstance(inputs, torch.Tensor) and inputs.ndim == 4:
-            # Batch of images, keep as is.
-            assert batch_size == inputs.shape[0], f"Batch size {batch_size} does not match number of images {inputs.shape[0]}"
+        if isinstance(inputs, torch.Tensor):
+            if inputs.ndim == 4:
+                # Batch of images, keep as is.
+                assert batch_size == inputs.shape[0], f"Batch size {batch_size} does not match number of images {inputs.shape[0]}"
+            elif inputs.ndim == 3:
+                inputs = inputs.unsqueeze(0)
+            else:
+                raise ValueError(f"Expected input to be a 3D or 4D tensor, but got {inputs.shape}")
             ori_inputs = inputs
         else:
             ori_inputs = self._inputs_to_list(inputs)
