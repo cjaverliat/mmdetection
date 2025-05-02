@@ -9,6 +9,7 @@ import mmcv
 import mmengine
 import numpy as np
 import torch.nn as nn
+import torchvision
 from mmcv.transforms import LoadImageFromFile
 from mmengine.dataset import Compose
 from mmengine.fileio import (get_file_backend, isdir, join_path,
@@ -82,6 +83,9 @@ class DetInferencer(BaseInferencer):
         'pred_out_dir',
         'return_datasamples',
         'no_save_pred',
+        'nms_thr',
+        'bbox_thr',
+        'cat_ids',
     }
 
     def __init__(self,
@@ -521,6 +525,30 @@ class DetInferencer(BaseInferencer):
 
         return results
 
+    def _filter_by_labels(self, result: DetDataSample, cat_ids: list[int] | None) -> DetDataSample:
+        if cat_ids is None:
+            return result
+        valid_labels = torch.tensor(cat_ids, device=result.pred_instances.labels.device)
+        valid_mask = torch.isin(result.pred_instances.labels, valid_labels)
+        valid_idxs = torch.nonzero(valid_mask, as_tuple=True)[0]
+        result.pred_instances = result.pred_instances[valid_idxs]
+        return result
+    
+    def _filter_by_scores(self, result: DetDataSample, bbox_thr: float) -> DetDataSample:
+        if bbox_thr < 0:
+            return result
+        valid_mask = result.pred_instances.scores > bbox_thr
+        valid_idxs = torch.nonzero(valid_mask, as_tuple=True)[0]
+        result.pred_instances = result.pred_instances[valid_idxs]
+        return result
+    
+    def _filter_by_nms(self, result: DetDataSample, nms_thr: float) -> DetDataSample:
+        if nms_thr < 0:
+            return result
+        keep_idxs = torchvision.ops.nms(result.pred_instances.bboxes, result.pred_instances.scores, nms_thr)
+        result.pred_instances = result.pred_instances[keep_idxs]
+        return result
+
     def postprocess(
         self,
         preds: PredType,
@@ -529,6 +557,9 @@ class DetInferencer(BaseInferencer):
         print_result: bool = False,
         no_save_pred: bool = False,
         pred_out_dir: str = '',
+        nms_thr: float = -1,
+        bbox_thr: float = -1,
+        cat_ids: list[int] | None = None,
         **kwargs,
     ) -> Dict:
         """Process the predictions and visualization results from ``forward``
@@ -564,11 +595,18 @@ class DetInferencer(BaseInferencer):
                 json-serializable dict containing only basic data elements such
                 as strings and numbers.
         """
+        result_dict = {}
+        results = preds
+
+        for i, result in enumerate(results):
+            result = self._filter_by_labels(result, cat_ids)
+            result = self._filter_by_scores(result, bbox_thr)
+            result = self._filter_by_nms(result, nms_thr)
+            results[i] = result
+
         if no_save_pred is True:
             pred_out_dir = ''
 
-        result_dict = {}
-        results = preds
         if not return_datasamples:
             results = []
             for pred in preds:
