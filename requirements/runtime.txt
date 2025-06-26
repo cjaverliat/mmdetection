@@ -5,4 +5,6 @@ scipy
 shapely
 six
 terminaltables
+torch
+torchvision
 tqdm
